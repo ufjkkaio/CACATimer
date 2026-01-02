@@ -10,7 +10,7 @@
   <!-- iOS向け（あると見た目が良い） -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="./img/icon-192.png">
+  <link rel="apple-touch-icon" href="./img/icon-192.p">
 </head>
 <body>
   <div class="wrap">
@@ -20,9 +20,9 @@
     <div class="row timerTop" style="justify-content: space-between;">
       <div class="time" id="display">00:00:00.0</div>
       <div class="row botan">
-        <button id="startBtn">Start</button>
-        <button id="stopBtn" class="secondary" disabled>Stop & Save</button>
-        <button id="resetBtn" class="secondary" disabled>Reset</button>
+        <button class="main-botan" id="startBtn">Start</button>
+        <button  id="stopBtn" class="secondary main-botan" disabled>Stop & Save</button>
+        <!-- <button id="resetBtn" class="secondary" disabled>Reset</button> -->
       </div>
     </div>
 
@@ -88,7 +88,6 @@
   const display = document.getElementById("display");
   const startBtn = document.getElementById("startBtn");
   const stopBtn = document.getElementById("stopBtn");
-  const resetBtn = document.getElementById("resetBtn");
   const labelInput = document.getElementById("labelInput");
 
   const listEl = document.getElementById("list");
@@ -127,7 +126,6 @@
   function setButtons() {
     startBtn.disabled = running;
     stopBtn.disabled = !running;
-    resetBtn.disabled = running ? true : (elapsedMs === 0);
   }
 
   startBtn.addEventListener("click", () => {
@@ -159,14 +157,6 @@
     records.unshift(rec);
     save();
     render();
-  });
-
-  resetBtn.addEventListener("click", () => {
-    running = false;
-    if (rafId) cancelAnimationFrame(rafId);
-    elapsedMs = 0;
-    display.textContent = fmt(0);
-    setButtons();
   });
 
   // ===== List UI =====
