@@ -1,0 +1,17 @@
+{
+  "name": "Time Logger",
+  "short_name": "TimeLogger",
+  "description": "計測→記録→選択合計のシンプル時間ログ",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b0c10",
+  "theme_color": "#12151c",
+  "icons": [
+  { "src": "./img/icon-192.png", "sizes": "192x192", "type": "image/jpeg" },
+  { "src": "./img/icon-512.png", "sizes": "512x512", "type": "image/jpeg" },
+  { "src": "./img/icon-512-maskable.png", "sizes": "512x512", "type": "image/jpeg", "purpose": "maskable" }
+]
+}
+
+
