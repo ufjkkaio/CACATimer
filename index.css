@@ -55,10 +55,10 @@
     .card {
       padding: 12px;
     }
-    /* タイマー操作ボタンを横いっぱいに */
-    /* .row button {
+    /* タイマー操作ボタンを横いっぱいに  */
+    .row button {
       flex: 1;
-    } */
+    }
 
     /* 記録リスト */
     .item {
@@ -95,10 +95,10 @@
       flex: 1;
     }
 
-    /* .botan {
+    .botan {
       display: flex;
       justify-content: center;
-    } */
+    }
 
     .timerTop { justify-content: center !important; }
     .botan { justify-content: center; width: 100%;}
