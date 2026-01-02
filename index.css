@@ -39,25 +39,22 @@
     body {
       padding: 10px;
     }
-
     .wrap {
       max-width: 650px;
     }
-
     .time {
-      font-size: 26px;
+      font-size: 50px;
+      font-weight: bold;
       text-align: center;
       width: 100%;
+      margin-bottom: 15px;
     }
-
     .row {
       gap: 8px;
     }
-
     .card {
       padding: 12px;
     }
-
     /* タイマー操作ボタンを横いっぱいに */
     /* .row button {
       flex: 1;
@@ -79,26 +76,21 @@
       align-items: flex-start;
       gap: 6px;
     }
-
     .meta .top .dur {
       font-size: 14px;
     }
-
     input[type="text"] {
       box-sizing: border-box;
       width: 100%;
       min-width: unset;
     }
-
     .summary {
       flex-direction: column;
       align-items: stretch;
     }
-
     .summary .row {
       justify-content: space-between;
     }
-
     .summary button {
       flex: 1;
     }
@@ -109,8 +101,13 @@
     } */
 
     .timerTop { justify-content: center !important; }
-    .botan { justify-content: center; width: 100%; }
-    .row button { flex: initial; } /* 伸びるのを止める */
-
+    .botan { justify-content: center; width: 100%;}
+    .row button { flex: initial; } /*伸びるのを止める*/
     .record-label{ max-width: 50%; }
+    .main-botan {
+      box-sizing: border-box;
+      width: 45%;
+      height: 55px;
+      font-size: 20px;
+    }
    }
