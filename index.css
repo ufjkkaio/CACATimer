@@ -34,6 +34,7 @@
     .muted { color:#9aa4b2; }
     .divider { height:1px; background:#222a36; margin: 10px 0; }
     .record-label{width: 100%; max-width: 420px; }
+    a {text-decoration: none;}
 
     @media (max-width: 650px) {
     body {
