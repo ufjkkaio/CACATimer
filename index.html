@@ -10,11 +10,15 @@
   <!-- iOS向け（あると見た目が良い） -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="./img/icon-192.p">
+  <link rel="apple-touch-icon" href="./img/icon-192.png">
 </head>
 <body>
   <div class="wrap">
-  <h1>Time Logger（計測→記録→選択合計）</h1>
+  <h1 id="title">Time Logger（計測→記録→選択合計）</h1>
+  <div class="lang-switch">
+    <a href="#" data-lang="ja">日本語</a>
+    <a href="#" data-lang="pt">Português</a>
+  </div>
 
   <div class="card">
     <div class="row timerTop" style="justify-content: space-between;">
@@ -30,14 +34,14 @@
 
     <div class="row">
       <input id="labelInput" type="text" placeholder="今回のラベル（例：英語、JS、筋トレ）" />
-      <span class="muted">※ Stop時にこのラベルで保存（空でもOK）</span>
+      <span class="muted" id="memo">※ Stop時にこのラベルで保存（空でもOK）</span>
     </div>
   </div>
 
   <div class="card">
     <div class="summary">
-      <div class="pill">選択件数：<b id="selCount">0</b></div>
-      <div class="pill">選択合計：<b id="selTotal">00:00:00.0</b></div>
+      <div class="pill"><span id="selCountL">選択件数：</span><b id="selCount">0</b></div>
+      <div class="pill"><span id="selTotalL">選択合計：</span><b id="selTotal">00:00:00.0</b></div>
       <div class="row">
         <button id="selectAllBtn" class="secondary">全選択</button>
         <button id="clearSelBtn" class="secondary">選択解除</button>
@@ -85,6 +89,7 @@
   let elapsedMs = 0;    // accumulated ms
   let rafId = null;
 
+  const title = document.getElementById("title");
   const display = document.getElementById("display");
   const startBtn = document.getElementById("startBtn");
   const stopBtn = document.getElementById("stopBtn");
@@ -93,6 +98,10 @@
   const listEl = document.getElementById("list");
   const selCountEl = document.getElementById("selCount");
   const selTotalEl = document.getElementById("selTotal");
+  const selectedCountL = document.getElementById("selCountL");
+  const selectedTotalL = document.getElementById("selTotalL");
+
+  const memo = document.getElementById("memo");
 
   const selectAllBtn = document.getElementById("selectAllBtn");
   const clearSelBtn = document.getElementById("clearSelBtn");
@@ -266,14 +275,75 @@
   display.textContent = fmt(0);
   setButtons();
   render();
-})();
+
+  const TEXT = {
+  ja: {
+    title: "Time Logger（計測→記録→選択合計）",
+    start: "Start",
+    stop: "Stop & Save",
+    labelPlaceholder: "今回のラベル（例：英語、JS、筋トレ）",
+    memo: "※ Stop時にこのラベルで保存（空でもOK）",
+    selectedCountL: "選択件数",
+    selectedTotalL: "選択合計",
+    selectAllBtn: "全選択",
+    clearSelBtn: "選択解除",
+    deleteSelBtn: "選択削除",
+    clearAllBtn: "全削除"
+  },
+  pt: {
+    title: "Time Logger",
+    start: "Start",
+    stop: "Stop & Save",
+    labelPlaceholder: "Label (optional)",
+    memo: "※ O rótulo será salvo ao pressionar “Stop” (opcional)",
+    selectedCountL: "Selecionar",
+    selectedTotalL: "Total Time",
+    selectAllBtn: "Selecionar tudo",
+    clearSelBtn: "Limpar seleção",
+    deleteSelBtn: "Excluir selecionados",
+    clearAllBtn: "Excluir tudo"
+  }
+ };
+
+  let currentLang = "ja";
+
+  const t = (key) => {
+    return TEXT[currentLang][key];
+  }
+
+  const applyLanguage = () => {
+  title.textContent = t("title");
+  document.title = t("title");
+  startBtn.textContent = t("start");
+  stopBtn.textContent = t("stop");
+  labelInput.placeholder = t("labelPlaceholder");
+  memo.textContent = t("memo");
+  selectedCountL.textContent = t("selectedCountL");
+  selectedTotalL.textContent = t("selectedTotalL");
+  selectAllBtn.textContent = t("selectAllBtn");
+  clearSelBtn.textContent = t("clearSelBtn");
+  deleteSelBtn.textContent = t("deleteSelBtn");
+  clearAllBtn.textContent = t("clearAllBtn");
+};
+
+applyLanguage();
+
+document.querySelectorAll(".lang-switch a").forEach(a => {
+  a.addEventListener("click", (e) => {
+    e.preventDefault();
+    currentLang = a.dataset.lang;
+    applyLanguage();
+  });
+});
+
+
+ })();
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
       navigator.serviceWorker.register("./service-worker.js");
     });
   }
-
 </script>
 </body>
 </html>
