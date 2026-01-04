@@ -11,272 +11,58 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="./img/icon-192.png">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
-  <div class="wrap">
-  <h1 id="title">Time Logger（計測→記録→選択合計）</h1>
-  <div class="lang-switch">
-    <a href="#" data-lang="ja">日本語</a>
-    <a href="#" data-lang="pt">Português</a>
-  </div>
+  <div id="root"></div>
 
-  <div class="card">
-    <div class="row timerTop" style="justify-content: space-between;">
-      <div class="time" id="display">00:00:00.0</div>
-      <div class="row botan">
-        <button class="main-botan" id="startBtn">Start</button>
-        <button  id="stopBtn" class="secondary main-botan" disabled>Stop & Save</button>
-        <!-- <button id="resetBtn" class="secondary" disabled>Reset</button> -->
-      </div>
-    </div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
 
-    <div class="divider"></div>
+// ===== Storage =====
+const KEY = "time_logger_records_v1";
 
-    <div class="row">
-      <input id="labelInput" type="text" placeholder="今回のラベル（例：英語、JS、筋トレ）" />
-      <span class="muted" id="memo">※ Stop時にこのラベルで保存（空でもOK）</span>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="summary">
-      <div class="pill"><span id="selCountL">選択件数：</span><b id="selCount">0</b></div>
-      <div class="pill"><span id="selTotalL">選択合計：</span><b id="selTotal">00:00:00.0</b></div>
-      <div class="row">
-        <button id="selectAllBtn" class="secondary">全選択</button>
-        <button id="clearSelBtn" class="secondary">選択解除</button>
-        <button id="deleteSelBtn" class="danger">選択削除</button>
-        <button id="clearAllBtn" class="danger">全削除</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="list" id="list"></div>
-</div>
-
-<script>
-(() => {
-  // ===== Storage =====
-  const KEY = "time_logger_records_v1";
-
-  /** @type {{id:string,label:string,ms:number,createdAt:number,selected:boolean}[]} */
-  let records = load();
-
-  function load() {
-    try {
-      const raw = localStorage.getItem(KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      if (!Array.isArray(parsed)) return [];
-      return parsed.map(r => ({
-        id: String(r.id ?? crypto.randomUUID()),
-        label: String(r.label ?? ""),
-        ms: Number.isFinite(r.ms) ? r.ms : 0,
-        createdAt: Number.isFinite(r.createdAt) ? r.createdAt : Date.now(),
-        selected: !!r.selected,
-      }));
-    } catch {
-      return [];
-    }
+function loadRecords() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(r => ({
+      id: String(r.id ?? crypto.randomUUID()),
+      label: String(r.label ?? ""),
+      ms: Number.isFinite(r.ms) ? r.ms : 0,
+      createdAt: Number.isFinite(r.createdAt) ? r.createdAt : Date.now(),
+      selected: !!r.selected,
+    }));
+  } catch {
+    return [];
   }
+}
 
-  function save() {
-    localStorage.setItem(KEY, JSON.stringify(records));
-  }
+function saveRecords(records) {
+  localStorage.setItem(KEY, JSON.stringify(records));
+}
 
-  // ===== Timer =====
-  let running = false;
-  let startAt = 0;      // performance.now()
-  let elapsedMs = 0;    // accumulated ms
-  let rafId = null;
+function fmt(ms) {
+  const sign = ms < 0 ? "-" : "";
+  ms = Math.abs(ms);
 
-  const title = document.getElementById("title");
-  const display = document.getElementById("display");
-  const startBtn = document.getElementById("startBtn");
-  const stopBtn = document.getElementById("stopBtn");
-  const labelInput = document.getElementById("labelInput");
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const d1 = Math.floor((ms % 1000) / 10); // 10ms単位（0-99）
 
-  const listEl = document.getElementById("list");
-  const selCountEl = document.getElementById("selCount");
-  const selTotalEl = document.getElementById("selTotal");
-  const selectedCountL = document.getElementById("selCountL");
-  const selectedTotalL = document.getElementById("selTotalL");
+  const hh = String(h).padStart(2, "0");
+  const mm = String(m).padStart(2, "0");
+  const ss = String(s).padStart(2, "0");
+  const dd = String(d1).padStart(2, "0"); // 2桁表示
+  return `${sign}${hh}:${mm}:${ss}.${dd}`;
+}
 
-  const memo = document.getElementById("memo");
-
-  const selectAllBtn = document.getElementById("selectAllBtn");
-  const clearSelBtn = document.getElementById("clearSelBtn");
-  const deleteSelBtn = document.getElementById("deleteSelBtn");
-  const clearAllBtn = document.getElementById("clearAllBtn");
-
-  function fmt(ms) {
-    const sign = ms < 0 ? "-" : "";
-    ms = Math.abs(ms);
-
-    const totalSec = Math.floor(ms / 1000);
-    const h = Math.floor(totalSec / 3600);
-    const m = Math.floor((totalSec % 3600) / 60);
-    const s = totalSec % 60;
-    const d1 = Math.floor((ms % 1000) / 100); // 0-9
-
-    const hh = String(h).padStart(2, "0");
-    const mm = String(m).padStart(2, "0");
-    const ss = String(s).padStart(2, "0");
-    return `${sign}${hh}:${mm}:${ss}.${d1}`;
-  }
-
-  function tick() {
-    if (!running) return;
-    const now = performance.now();
-    const ms = elapsedMs + (now - startAt);
-    display.textContent = fmt(ms);
-    rafId = requestAnimationFrame(tick);
-  }
-
-  function setButtons() {
-    startBtn.disabled = running;
-    stopBtn.disabled = !running;
-  }
-
-  startBtn.addEventListener("click", () => {
-    running = true;
-    startAt = performance.now();
-    setButtons();
-    tick();
-  });
-
-  stopBtn.addEventListener("click", () => {
-    if (!running) return;
-    running = false;
-    if (rafId) cancelAnimationFrame(rafId);
-
-    const now = performance.now();
-    const total = elapsedMs + (now - startAt);
-    elapsedMs = 0;
-    display.textContent = fmt(0);
-    setButtons();
-
-    const label = labelInput.value.trim();
-    const rec = {
-      id: crypto.randomUUID(),
-      label,
-      ms: Math.max(0, Math.round(total)),
-      createdAt: Date.now(),
-      selected: false
-    };
-    records.unshift(rec);
-    save();
-    render();
-  });
-
-  // ===== List UI =====
-  function render() {
-    listEl.innerHTML = "";
-
-    for (const r of records) {
-      const item = document.createElement("div");
-      item.className = "item";
-
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.checked = r.selected;
-      cb.addEventListener("change", () => {
-        r.selected = cb.checked;
-        save();
-        updateSummary();
-      });
-
-      const meta = document.createElement("div");
-      meta.className = "meta";
-
-      const top = document.createElement("div");
-      top.className = "top";
-
-      const dur = document.createElement("span");
-      dur.className = "dur";
-      dur.textContent = fmt(r.ms);
-
-      const label = document.createElement("input");
-      label.type = "text";
-      label.value = r.label;
-      label.placeholder = "ラベル（空OK）";
-      label.className = "record-label";   // ←これ追加
-      label.addEventListener("input", () => {
-        r.label = label.value;
-        save();
-      });
-
-      top.appendChild(dur);
-      top.appendChild(label);
-
-      const small = document.createElement("small");
-      small.textContent = new Date(r.createdAt).toLocaleString("ja-JP");
-
-      meta.appendChild(top);
-      meta.appendChild(small);
-
-      const actions = document.createElement("div");
-      actions.className = "actions";
-
-      const delBtn = document.createElement("button");
-      delBtn.className = "danger";
-      delBtn.textContent = "削除";
-      delBtn.addEventListener("click", () => {
-        records = records.filter(x => x.id !== r.id);
-        save();
-        render();
-      });
-
-      actions.appendChild(delBtn);
-
-      item.appendChild(cb);
-      item.appendChild(meta);
-      item.appendChild(actions);
-
-      listEl.appendChild(item);
-    }
-
-    updateSummary();
-  }
-
-  function updateSummary() {
-    const selected = records.filter(r => r.selected);
-    const sum = selected.reduce((a, r) => a + r.ms, 0);
-    selCountEl.textContent = String(selected.length);
-    selTotalEl.textContent = fmt(sum);
-  }
-
-  selectAllBtn.addEventListener("click", () => {
-    records.forEach(r => r.selected = true);
-    save();
-    render();
-  });
-
-  clearSelBtn.addEventListener("click", () => {
-    records.forEach(r => r.selected = false);
-    save();
-    render();
-  });
-
-  deleteSelBtn.addEventListener("click", () => {
-    const before = records.length;
-    records = records.filter(r => !r.selected);
-    if (records.length === before) return;
-    save();
-    render();
-  });
-
-  clearAllBtn.addEventListener("click", () => {
-    records = [];
-    save();
-    render();
-  });
-
-  // init
-  display.textContent = fmt(0);
-  setButtons();
-  render();
-
-  const TEXT = {
+const TEXT = {
   ja: {
     title: "Time Logger（計測→記録→選択合計）",
     start: "Start",
@@ -288,62 +74,264 @@
     selectAllBtn: "全選択",
     clearSelBtn: "選択解除",
     deleteSelBtn: "選択削除",
-    clearAllBtn: "全削除"
+    clearAllBtn: "全削除",
+    delete: "削除",
+    labelPlaceholderRecord: "ラベル（空OK）"
   },
   pt: {
     title: "Time Logger",
     start: "Start",
     stop: "Stop & Save",
     labelPlaceholder: "Label (optional)",
-    memo: "※ O rótulo será salvo ao pressionar “Stop” (opcional)",
+    memo: "※ O rótulo será salvo ao pressionar \"Stop\" (opcional)",
     selectedCountL: "Selecionar",
     selectedTotalL: "Total Time",
     selectAllBtn: "Selecionar tudo",
     clearSelBtn: "Limpar seleção",
     deleteSelBtn: "Excluir selecionados",
-    clearAllBtn: "Excluir tudo"
+    clearAllBtn: "Excluir tudo",
+    delete: "Excluir",
+    labelPlaceholderRecord: "Label (optional)"
   }
- };
-
-  let currentLang = "ja";
-
-  const t = (key) => {
-    return TEXT[currentLang][key];
-  }
-
-  const applyLanguage = () => {
-  title.textContent = t("title");
-  document.title = t("title");
-  startBtn.textContent = t("start");
-  stopBtn.textContent = t("stop");
-  labelInput.placeholder = t("labelPlaceholder");
-  memo.textContent = t("memo");
-  selectedCountL.textContent = t("selectedCountL");
-  selectedTotalL.textContent = t("selectedTotalL");
-  selectAllBtn.textContent = t("selectAllBtn");
-  clearSelBtn.textContent = t("clearSelBtn");
-  deleteSelBtn.textContent = t("deleteSelBtn");
-  clearAllBtn.textContent = t("clearAllBtn");
 };
 
-applyLanguage();
+function RecordItem({ record, onUpdate, onDelete, t }) {
+  const handleCheckboxChange = (e) => {
+    onUpdate({ ...record, selected: e.target.checked });
+  };
 
-document.querySelectorAll(".lang-switch a").forEach(a => {
-  a.addEventListener("click", (e) => {
-    e.preventDefault();
-    currentLang = a.dataset.lang;
-    applyLanguage();
+  const handleLabelChange = (e) => {
+    onUpdate({ ...record, label: e.target.value });
+  };
+
+  return (
+    <div className="item">
+      <input
+        type="checkbox"
+        checked={record.selected}
+        onChange={handleCheckboxChange}
+      />
+      <div className="meta">
+        <div className="top">
+          <span className="dur">{fmt(record.ms)}</span>
+          <input
+            type="text"
+            value={record.label}
+            onChange={handleLabelChange}
+            placeholder={t("labelPlaceholderRecord")}
+            className="record-label"
+          />
+        </div>
+        <small>{new Date(record.createdAt).toLocaleString("ja-JP")}</small>
+      </div>
+      <div className="actions">
+        <button className="danger" onClick={() => onDelete(record.id)}>
+          {t("delete")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TimeLoggerApp() {
+  const [records, setRecords] = useState(loadRecords);
+  const [running, setRunning] = useState(false);
+  const [displayTime, setDisplayTime] = useState(0);
+  const [labelInput, setLabelInput] = useState("");
+  const [currentLang, setCurrentLang] = useState("ja");
+
+  const startAtRef = useRef(0);
+  const elapsedMsRef = useRef(0);
+  const rafIdRef = useRef(null);
+
+  const t = (key) => TEXT[currentLang][key] || key;
+
+  useEffect(() => {
+    document.title = t("title");
+  }, [currentLang]);
+
+  useEffect(() => {
+    saveRecords(records);
+  }, [records]);
+
+  useEffect(() => {
+    if (!running) return;
+
+    const tick = () => {
+      const now = performance.now();
+      const ms = elapsedMsRef.current + (now - startAtRef.current);
+      setDisplayTime(ms);
+      rafIdRef.current = requestAnimationFrame(tick);
+    };
+
+    rafIdRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+    };
+  }, [running]);
+
+  const handleStart = () => {
+    setRunning(true);
+    startAtRef.current = performance.now();
+    elapsedMsRef.current = 0;
+  };
+
+  const handleStop = () => {
+    if (!running) return;
+    setRunning(false);
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+    }
+
+    const now = performance.now();
+    const total = elapsedMsRef.current + (now - startAtRef.current);
+    elapsedMsRef.current = 0;
+    setDisplayTime(0);
+
+    const label = labelInput.trim();
+    const newRecord = {
+      id: crypto.randomUUID(),
+      label,
+      ms: Math.max(0, Math.round(total)),
+      createdAt: Date.now(),
+      selected: false
+    };
+    setRecords(prev => [newRecord, ...prev]);
+    setLabelInput("");
+  };
+
+  const handleRecordUpdate = (updatedRecord) => {
+    setRecords(prev =>
+      prev.map(r => r.id === updatedRecord.id ? updatedRecord : r)
+    );
+  };
+
+  const handleRecordDelete = (id) => {
+    setRecords(prev => prev.filter(r => r.id !== id));
+  };
+
+  const selectedRecords = records.filter(r => r.selected);
+  const selectedSum = selectedRecords.reduce((a, r) => a + r.ms, 0);
+
+  const handleSelectAll = () => {
+    setRecords(prev => prev.map(r => ({ ...r, selected: true })));
+  };
+
+  const handleClearSelection = () => {
+    setRecords(prev => prev.map(r => ({ ...r, selected: false })));
+  };
+
+  const handleDeleteSelected = () => {
+    setRecords(prev => prev.filter(r => !r.selected));
+  };
+
+  const handleClearAll = () => {
+    setRecords([]);
+  };
+
+  const handleLangChange = (lang) => {
+    setCurrentLang(lang);
+  };
+
+  return (
+    <div className="wrap">
+      <h1 id="title">{t("title")}</h1>
+      <div className="lang-switch">
+        <a href="#" onClick={(e) => { e.preventDefault(); handleLangChange("ja"); }}>
+          日本語
+        </a>
+        <a href="#" onClick={(e) => { e.preventDefault(); handleLangChange("pt"); }}>
+          Português
+        </a>
+      </div>
+
+      <div className="card">
+        <div className="row timerTop" style={{ justifyContent: "space-between" }}>
+          <div className="time">{fmt(displayTime)}</div>
+          <div className="row botan">
+            <button
+              className="main-botan"
+              onClick={handleStart}
+              disabled={running}
+            >
+              {t("start")}
+            </button>
+            <button
+              className="secondary main-botan"
+              onClick={handleStop}
+              disabled={!running}
+            >
+              {t("stop")}
+            </button>
+          </div>
+        </div>
+
+        <div className="divider"></div>
+
+        <div className="row">
+          <input
+            type="text"
+            value={labelInput}
+            onChange={(e) => setLabelInput(e.target.value)}
+            placeholder={t("labelPlaceholder")}
+          />
+          <span className="muted">{t("memo")}</span>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="summary">
+          <div className="pill">
+            <span>{t("selectedCountL")}：</span>
+            <b>{selectedRecords.length}</b>
+          </div>
+          <div className="pill">
+            <span>{t("selectedTotalL")}：</span>
+            <b>{fmt(selectedSum)}</b>
+          </div>
+          <div className="row">
+            <button className="secondary" onClick={handleSelectAll}>
+              {t("selectAllBtn")}
+            </button>
+            <button className="secondary" onClick={handleClearSelection}>
+              {t("clearSelBtn")}
+            </button>
+            <button className="danger" onClick={handleDeleteSelected}>
+              {t("deleteSelBtn")}
+            </button>
+            <button className="danger" onClick={handleClearAll}>
+              {t("clearAllBtn")}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="list">
+        {records.map(record => (
+          <RecordItem
+            key={record.id}
+            record={record}
+            onUpdate={handleRecordUpdate}
+            onDelete={handleRecordDelete}
+            t={t}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<TimeLoggerApp />);
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js");
   });
-});
-
-
- })();
-
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./service-worker.js");
-    });
-  }
+}
 </script>
 </body>
 </html>
